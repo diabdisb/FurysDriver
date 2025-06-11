@@ -1,0 +1,1709 @@
+// This function attempts to reference two kernel objects by name. The object names
+// are constructed dynamically from characters stored in local stack variables
+// (v11-v25). It initializes two UNICODE_STRING structures using these dynamically
+// constructed strings. It then calls ObReferenceObjectByName for each string with
+// OBJ_CASE_INSENSITIVE (0x40). If both reference calls succeed, it checks if the
+// QWORD pointed to by a1 is zero. If *a1 is zero, it traverses a linked list
+// starting from MEMORY[8] to find the tail and sets *a1 to the tail. Finally, it
+// attempts to dereference the referenced objects by calling
+// ObfDereferenceObject(0) twice. NOTE: The object names are built from potentially
+// uninitialized stack variables, which is likely a bug or relies on specific prior
+// state. NOTE: The calls to ObfDereferenceObject(0) are incorrect and should
+// likely dereference the objects obtained from ObReferenceObjectByName.
+// Parameters: a1: Pointer to a QWORD. If this QWORD is initially zero, the
+// function attempts to set it to the tail of a linked list starting at MEMORY[8].
+// Return Value: Returns 0 on success (after referencing objects and potentially
+// updating a1). Returns a negative NTSTATUS error code from
+// ObReferenceObjectByName if either call fails.
+__int64 __fastcall AttemptReferenceObjectsAndLink(_QWORD *pListTailOrNode)
+{
+  int i; // ebx
+  __int64 result; // rax
+  int status2; // ebx
+  __int64 listNode; // rax
+  WCHAR objectNameBuffer2[16]; // [rsp+40h] [rbp-C0h] BYREF
+  WCHAR objectNameBuffer1[20]; // [rsp+60h] [rbp-A0h] BYREF
+  _UNICODE_STRING objectNameUnicodeString1; // [rsp+88h] [rbp-78h] BYREF
+  struct _UNICODE_STRING objectNameUnicodeString2; // [rsp+98h] [rbp-68h] BYREF
+  _OWORD p_unicodeStringBuffer[8]; // [rsp+B0h] [rbp-50h] BYREF
+  WCHAR uninitializedChar_1; // [rsp+136h] [rbp+36h]
+  WCHAR uninitializedChar_2; // [rsp+138h] [rbp+38h]
+  WCHAR uninitializedChar_3; // [rsp+140h] [rbp+40h]
+  WCHAR uninitializedChar_4; // [rsp+142h] [rbp+42h]
+  WCHAR uninitializedChar_5; // [rsp+14Ah] [rbp+4Ah]
+  WCHAR uninitializedChar_6; // [rsp+168h] [rbp+68h]
+  WCHAR uninitializedChar_7; // [rsp+172h] [rbp+72h]
+  WCHAR uninitializedChar_8; // [rsp+17Ah] [rbp+7Ah]
+  WCHAR uninitializedChar_9; // [rsp+182h] [rbp+82h]
+  WCHAR uninitializedChar_10; // [rsp+188h] [rbp+88h]
+  WCHAR uninitializedChar_11; // [rsp+18Eh] [rbp+8Eh]
+  WCHAR uninitializedChar_12; // [rsp+194h] [rbp+94h]
+  WCHAR uninitializedChar_13; // [rsp+196h] [rbp+96h]
+  WCHAR uninitializedChar_14; // [rsp+19Ah] [rbp+9Ah]
+  WCHAR uninitializedChar_15; // [rsp+19Ch] [rbp+9Ch]
+
+  FillMemoryWithByte(p_unicodeStringBuffer, 0, 0x200u);
+  for ( i = 0; i < 256; ++i )
+    AppendWordToString((__int64)p_unicodeStringBuffer, i - 1);
+  objectNameBuffer1[1] = uninitializedChar_2;
+  objectNameBuffer1[3] = uninitializedChar_9;
+  objectNameBuffer1[4] = uninitializedChar_15;
+  objectNameBuffer1[5] = uninitializedChar_8;
+  objectNameBuffer1[8] = uninitializedChar_5;
+  objectNameBuffer1[9] = uninitializedChar_11;
+  objectNameBuffer1[10] = uninitializedChar_14;
+  objectNameBuffer1[11] = uninitializedChar_1;
+  objectNameBuffer1[12] = uninitializedChar_10;
+  objectNameBuffer1[13] = uninitializedChar_7;
+  objectNameBuffer1[0] = uninitializedChar_6;
+  objectNameBuffer1[2] = uninitializedChar_12;
+  objectNameBuffer1[6] = uninitializedChar_12;
+  objectNameBuffer1[7] = uninitializedChar_6;
+  objectNameBuffer1[14] = uninitializedChar_13;
+  objectNameBuffer1[15] = uninitializedChar_13;
+  objectNameBuffer1[16] = 0;
+  RtlInitUnicodeString(&objectNameUnicodeString1, objectNameBuffer1);
+  result = ObReferenceObjectByName(&objectNameUnicodeString1, 64, 0);
+  if ( (int)result >= 0 )
+  {
+    objectNameBuffer2[3] = uninitializedChar_9;
+    objectNameBuffer2[4] = uninitializedChar_15;
+    objectNameBuffer2[5] = uninitializedChar_8;
+    objectNameBuffer2[8] = uninitializedChar_5;
+    objectNameBuffer2[9] = uninitializedChar_11;
+    objectNameBuffer2[10] = uninitializedChar_14;
+    objectNameBuffer2[11] = uninitializedChar_3;
+    objectNameBuffer2[0] = uninitializedChar_6;
+    objectNameBuffer2[2] = uninitializedChar_12;
+    objectNameBuffer2[6] = uninitializedChar_12;
+    objectNameBuffer2[7] = uninitializedChar_6;
+    objectNameBuffer2[12] = uninitializedChar_4;
+    objectNameBuffer2[1] = uninitializedChar_2;
+    objectNameBuffer2[13] = uninitializedChar_2;
+    objectNameBuffer2[14] = 0;
+    RtlInitUnicodeString(&objectNameUnicodeString2, objectNameBuffer2);
+    status2 = ObReferenceObjectByName(&objectNameUnicodeString2, 64, 0);
+    if ( status2 >= 0 )
+    {
+      if ( !*pListTailOrNode )
+      {
+        listNode = MEMORY[8];
+        if ( MEMORY[8] )
+        {
+          while ( *(_QWORD *)(listNode + 16) )
+            listNode = *(_QWORD *)(listNode + 16);
+          *pListTailOrNode = listNode;
+        }
+      }
+      ObfDereferenceObject(0);
+      ObfDereferenceObject(0);
+      return 0;
+    }
+    else
+    {
+      _mm_lfence();
+      return (unsigned int)status2;
+    }
+  }
+  else
+  {
+    _mm_lfence();
+  }
+  return result;
+}
+
+
+
+
+// This function processes a pending I/O Request Packet (IRP), likely a read
+// request. It retrieves an IRP from a queue or state managed by the device
+// extension. If an IRP is found, it determines the amount of data to transfer by
+// taking the minimum of the requested read length (from the IRP's stack location)
+// and the size of the provided destination buffer. It then copies data from the
+// IRP's associated buffer (likely the MDL or user buffer) into the provided
+// destination buffer. Finally, it sets the IRP's status to success, reports the
+// number of bytes transferred in the IRP's Information field, and completes the
+// IRP. Synchronization is handled using a spin lock associated with the device
+// extension.  Parameters:   device_extension: Pointer to the device-specific
+// context or extension structure.   destination_buffer: Pointer to the buffer
+// where data should be copied.   destination_buffer_size: The size of the
+// destination_buffer.  Return Value:   None.
+void __fastcall process_irp_read(
+        __int64 device_object_or_context,
+        __m128 *destination_buffer,
+        int destination_buffer_size)
+{
+  __int64 device_extension_ptr; // rbx
+  unsigned int destination_buffer_size_calc; // r15d
+  IRP *irp; // rax
+  IRP *irp_1; // rbp
+  struct _IO_STACK_LOCATION *io_stack_location; // rsi
+  unsigned int requested_read_length; // edi
+
+  device_extension_ptr = *(_QWORD *)(device_object_or_context + 64);
+  destination_buffer_size_calc = destination_buffer_size - (_DWORD)destination_buffer;
+  KeAcquireSpinLockAtDpcLevel((PKSPIN_LOCK)(device_extension_ptr + 144));
+  irp = (IRP *)sub_140001298(device_extension_ptr);
+  irp_1 = irp;
+  if ( irp )
+  {
+    io_stack_location = irp->Tail.Overlay.CurrentStackLocation;
+    requested_read_length = io_stack_location->Parameters.Read.Length;
+    if ( destination_buffer_size_calc < requested_read_length )
+      requested_read_length = destination_buffer_size_calc;
+    sub_140004380((__m128 *)irp->AssociatedIrp.MasterIrp, destination_buffer, requested_read_length);
+    irp_1->IoStatus.Status = 0;
+    irp_1->IoStatus.Information = requested_read_length;
+    io_stack_location->Parameters.Read.Length = requested_read_length;
+  }
+  KeReleaseSpinLockFromDpcLevel((PKSPIN_LOCK)(device_extension_ptr + 144));
+  if ( irp_1 )
+    IofCompleteRequest(irp_1, 6);
+}
+
+
+// This function appends a single WORD (interpreted as a UNICODE character) to a
+// null-terminated array of WORDs (a UNICODE string). It first iterates through the
+// array starting at a1 to find the null terminator (a WORD with value 0). It then
+// writes the value of a2 at the location of the original null terminator. Finally,
+// it writes a new null terminator (0) immediately after the appended WORD.
+// Parameters: a1: Pointer to the null-terminated array of WORDs (UNICODE string)
+// to which the WORD will be appended. a2: The WORD value (character) to append to
+// the string.  Return Value: Returns the index (in WORDs) where the new WORD was
+// appended, which is the original length of the string.
+__int64 __fastcall AppendWordToString(__int64 p_unicodeStringBuffer, __int16 wordToAppend)
+{
+  __int64 appendIndex; // rax
+
+  appendIndex = -1;
+  do
+    ++appendIndex;
+  while ( *(_WORD *)(p_unicodeStringBuffer + 2 * appendIndex) );
+  *(_WORD *)(p_unicodeStringBuffer + 2 * appendIndex) = wordToAppend;
+  *(_WORD *)(p_unicodeStringBuffer + 2 * appendIndex + 2) = 0;
+  return appendIndex;
+}
+
+
+
+NTSTATUS __stdcall DriverEntry(PDRIVER_OBJECT DriverObject, PUNICODE_STRING RegistryPath)
+{
+  int n51; // ebx
+  int n32; // r8d
+  char *p_Str2; // r9
+  char v6; // cl
+  char v7; // al
+  __int64 v8; // rdx
+  CHAR *p_Format; // r8
+  char v10; // cl
+  char v11; // al
+  char *p_Str2_1; // r9
+  __int64 (__fastcall *v13)(__int64, PVOID *); // rdi
+  __int64 n13; // r8
+  __int16 v15; // cx
+  __int16 n13_2; // ax
+  __int64 v17; // rax
+  __int64 v18; // rdx
+  NTSTATUS v19; // edi
+  char *p_Str2_2; // r9
+  __int64 (__fastcall *v21)(__int64, PVOID *); // rdi
+  __int64 n13_1; // r8
+  __int16 v23; // cx
+  __int16 n13_3; // ax
+  __int64 v25; // rax
+  CHAR *p_Format_1; // r8
+  char v27; // cl
+  char v28; // al
+  CHAR *p_Format_2; // r8
+  char v30; // cl
+  char v31; // al
+  int n34; // r8d
+  char *p_Str2_3; // r9
+  char v34; // cl
+  char v35; // al
+  int n34_1; // r8d
+  CHAR *p_Format_3; // r9
+  char v38; // cl
+  char v39; // al
+  __int64 v40; // rax
+  CHAR *p_Format_4; // r8
+  char v42; // cl
+  char v43; // al
+  __int64 v44; // rdi
+  char *p_Str2_4; // r8
+  char v46; // cl
+  char v47; // al
+  CHAR *p_Format_5; // r8
+  char v49; // cl
+  char v50; // al
+  CHAR *p_Format_6; // r8
+  char v52; // cl
+  char v53; // al
+  CHAR *p_Format_7; // r8
+  char v55; // cl
+  char v56; // al
+  CHAR Format[16]; // [rsp+20h] [rbp-E0h] BYREF
+  __m256 v58; // [rsp+30h] [rbp-D0h] BYREF
+  __int16 n28176; // [rsp+50h] [rbp-B0h]
+  char n101; // [rsp+52h] [rbp-AEh]
+  char Str2[36]; // [rsp+54h] [rbp-ACh] BYREF
+  _BYTE v62[56]; // [rsp+78h] [rbp-88h] BYREF
+  _OSVERSIONINFOW VersionInformation; // [rsp+B0h] [rbp-50h] BYREF
+  PVOID Object; // [rsp+200h] [rbp+100h] BYREF
+  __int64 (__fastcall *p_sub_140002550)(int, int, int, int, int, __int64, __int64, __int64, __int64, __int64); // [rsp+210h] [rbp+110h] BYREF
+
+  DriverObject->DriverUnload = (PDRIVER_UNLOAD)sub_140001B44;
+  RtlGetVersion(&VersionInformation);
+  dwBuildNumber = VersionInformation.dwBuildNumber;
+  if ( VersionInformation.dwBuildNumber == 17134 || VersionInformation.dwBuildNumber == 17763 )
+  {
+    n960 = 960;
+  }
+  else if ( VersionInformation.dwBuildNumber - 18362 > 1 )
+  {
+    n960 = 1312;
+  }
+  else
+  {
+    n960 = 968;
+  }
+  n51 = 0;
+  if ( !(unsigned __int8)InitializeKernelApiPointers() )
+    return -1073741823;
+  qmemcpy(Str2, "ogLEC]ThTSIbl926&)vt\x1B? $x~&`<)\"R", 32);
+  if ( (unsigned __int8)_mm_cvtsi128_si32(_mm_srli_si128((__m128i)xmmword_140005818, 15)) )
+  {
+    n32 = 0;
+    p_Str2 = Str2;
+    do
+    {
+      v6 = 55 * (n32 / 0x37u);
+      v7 = n32++;
+      *p_Str2++ ^= v7 - v6 + 51;
+    }
+    while ( n32 < 32 );
+  }
+  qword_1400060B8 = sub_140003CC8(Str2);
+  if ( !qword_1400060B8 )
+  {
+    p_Format = Format;
+    n28176 = 28176;
+    *(_OWORD *)Format = xmmword_140005828;
+    n101 = 101;
+    v58 = ymmword_140005838;
+    do
+    {
+      v10 = 55 * (n51 / 0x37u);
+      v11 = n51++;
+      *p_Format++ ^= v11 - v10 + 51;
+    }
+    while ( n51 < 51 );
+LABEL_15:
+    DbgPrintEx(0, 0, Format);
+    return -1073741819;
+  }
+  p_Str2_1 = Str2;
+  v13 = (__int64 (__fastcall *)(__int64, PVOID *))PsLookupProcessByProcessId;
+  LODWORD(n13) = 0;
+  *(_OWORD *)Str2 = xmmword_140005860;
+  Object = 0;
+  *(_QWORD *)&Str2[16] = 0x5B004500590015LL;
+  strcpy(&Str2[24], "?");
+  do
+  {
+    LODWORD(v8) = (702812831 * (unsigned __int64)(unsigned int)n13) >> 32;
+    v15 = 55 * ((unsigned int)n13 / 0x37);
+    n13_2 = n13;
+    n13 = (unsigned int)(n13 + 1);
+    *(_WORD *)p_Str2_1 ^= n13_2 - v15 + 51;
+    p_Str2_1 += 2;
+  }
+  while ( (int)n13 < 13 );
+  v17 = sub_1400023F8(Str2, v8, n13, p_Str2_1);
+  v19 = v13(v17, &Object);
+  if ( v19 < 0 )
+  {
+    p_Str2_2 = Str2;
+    v21 = (__int64 (__fastcall *)(__int64, PVOID *))PsLookupProcessByProcessId;
+    LODWORD(n13_1) = 0;
+    *(_OWORD *)Str2 = xmmword_140005880;
+    strcpy(&Str2[24], "?");
+    *(_QWORD *)&Str2[16] = 0x5B004500590015LL;
+    do
+    {
+      LODWORD(v18) = (702812831 * (unsigned __int64)(unsigned int)n13_1) >> 32;
+      v23 = 55 * ((unsigned int)n13_1 / 0x37);
+      n13_3 = n13_1;
+      n13_1 = (unsigned int)(n13_1 + 1);
+      *(_WORD *)p_Str2_2 ^= n13_3 - v23 + 51;
+      p_Str2_2 += 2;
+    }
+    while ( (int)n13_1 < 13 );
+    v25 = sub_1400023F8(Str2, v18, n13_1, p_Str2_2);
+    v19 = v21(v25, &Object);
+    if ( v19 < 0 )
+    {
+      _mm_lfence();
+      p_Format_1 = Format;
+      qmemcpy(&v58.m256_f32[4], "6'&\\W", 5);
+      *(_OWORD *)Format = xmmword_1400058A0;
+      *(_OWORD *)v58.m256_f32 = xmmword_1400058B0;
+      do
+      {
+        v27 = 55 * (n51 / 0x37u);
+        v28 = n51++;
+        *p_Format_1++ ^= v28 - v27 + 51;
+      }
+      while ( n51 < 37 );
+LABEL_25:
+      DbgPrintEx(0, 0, Format);
+      return v19;
+    }
+  }
+  KeStackAttachProcess(Object, v62);
+  if ( (int)sub_140003D98() < 0 )
+  {
+    p_Format_2 = Format;
+    *(_OWORD *)Format = xmmword_1400058C8;
+    qmemcpy(&v58, "7+e/)& >k*8 ,$8==^U", 19);
+    do
+    {
+      v30 = 55 * (n51 / 0x37u);
+      v31 = n51++;
+      *p_Format_2++ ^= v31 - v30 + 51;
+    }
+    while ( n51 < 35 );
+    goto LABEL_25;
+  }
+  KeUnstackDetachProcess(v62);
+  KeStackAttachProcess(Object, v62);
+  n34 = 0;
+  p_Str2_3 = Str2;
+  *(_OWORD *)Str2 = xmmword_140005918;
+  qmemcpy(&Str2[16], ";<=>x0123srqp()*+T", 18);
+  do
+  {
+    v34 = 55 * (n34 / 0x37u);
+    v35 = n34++;
+    *p_Str2_3++ ^= v35 - v34 + 51;
+  }
+  while ( n34 < 34 );
+  n34_1 = 0;
+  LOWORD(v58.m256_f32[4]) = 21623;
+  p_Format_3 = Format;
+  *(_OWORD *)Format = xmmword_1400058F0;
+  *(_OWORD *)v58.m256_f32 = xmmword_140005900;
+  do
+  {
+    v38 = 55 * (n34_1 / 0x37u);
+    v39 = n34_1++;
+    *p_Format_3++ ^= v39 - v38 + 51;
+  }
+  while ( n34_1 < 34 );
+  v40 = ((__int64 (__fastcall *)(__int64, CHAR *, char *, CHAR *))sub_140003998)(
+          qword_1400060B8,
+          Format,
+          Str2,
+          p_Format_3);
+  if ( !v40 )
+  {
+    p_Format_4 = Format;
+    *(_OWORD *)Format = xmmword_140005940;
+    qmemcpy(&v58, "7+e .&-j?$(n?1%&6&;\\W", 21);
+    do
+    {
+      v42 = 55 * (n51 / 0x37u);
+      v43 = n51++;
+      *p_Format_4++ ^= v43 - v42 + 51;
+    }
+    while ( n51 < 37 );
+    goto LABEL_15;
+  }
+  v44 = v40 + *(int *)(v40 + 3) + 7LL;
+  if ( !v44 )
+  {
+    *(_OWORD *)&Str2[16] = xmmword_140005978;
+    *(_OWORD *)Str2 = xmmword_140005968;
+    if ( (unsigned __int8)_mm_cvtsi128_si32(_mm_srli_si128((__m128i)xmmword_140005978, 15)) )
+    {
+      p_Str2_4 = Str2;
+      do
+      {
+        v46 = 55 * (n51 / 0x37u);
+        v47 = n51++;
+        *p_Str2_4++ ^= v47 - v46 + 51;
+      }
+      while ( n51 < 32 );
+    }
+    DbgPrintEx(0, 0, Str2);
+    return -1073741819;
+  }
+  if ( !(unsigned __int8)sub_1400040A8(v44, &p_p_sub_140002550, 8) )
+  {
+    p_Format_5 = Format;
+    n28176 = 28177;
+    *(_OWORD *)Format = xmmword_140005988;
+    n101 = 101;
+    v58 = ymmword_140005998;
+    do
+    {
+      v49 = 55 * (n51 / 0x37u);
+      v50 = n51++;
+      *p_Format_5++ ^= v50 - v49 + 51;
+    }
+    while ( n51 < 51 );
+LABEL_46:
+    DbgPrintEx(0, 0, Format);
+    return -1073741823;
+  }
+  p_sub_140002550 = DispatchProcessCommands;
+  if ( !(unsigned __int8)sub_1400040A8(v44, &p_sub_140002550, 8) )
+  {
+    p_Format_6 = Format;
+    qmemcpy(&v58.m256_f32[6], "(=;;U`", 6);
+    *(_OWORD *)Format = xmmword_1400059C0;
+    *(_QWORD *)&v58.m256_f32[4] = 0x534282076323A3ALL;
+    *(_OWORD *)v58.m256_f32 = xmmword_1400059D0;
+    do
+    {
+      v52 = 55 * (n51 / 0x37u);
+      v53 = n51++;
+      *p_Format_6++ ^= v53 - v52 + 51;
+    }
+    while ( n51 < 46 );
+    goto LABEL_46;
+  }
+  p_Format_7 = Format;
+  *(_OWORD *)Format = xmmword_1400059F0;
+  qmemcpy(&v58, " ' 54.<&'5m/? =;60_V", 20);
+  do
+  {
+    v55 = 55 * (n51 / 0x37u);
+    v56 = n51++;
+    *p_Format_7++ ^= v56 - v55 + 51;
+  }
+  while ( n51 < 36 );
+  DbgPrintEx(0, 0, Format);
+  KeUnstackDetachProcess(v62);
+  ObfDereferenceObject(Object);
+  return 0;
+}
+
+// This function searches physical memory for a Portable Executable (PE) image
+// header. It iterates through physical memory ranges obtained from
+// MmGetPhysicalMemoryRanges. For each 4KB page within a range, it performs a check
+// involving a global structure (qword_1400081A0). If the check passes, it attempts
+// to translate a virtual address (or components provided in a1) into a physical
+// address by performing a manual page table walk (PML4, PDPT, PD, PT) using
+// MmCopyMemory to read page table entries from physical memory. It then reads data
+// from the resulting physical address and checks for the DOS header magic ('MZ')
+// and the PE signature ('PE\0\0'). If the signatures are found, it optionally
+// checks the SizeOfImage field in the PE Optional Header based on the
+// 'check_size_of_image_flag' parameter. If all checks pass, it copies the first
+// 4KB page of the found PE image into a global buffer (qword_1400061A8), stores
+// the physical address in a global variable (::QuadPart), frees the physical
+// memory ranges buffer, and returns the physical address. If no matching PE header
+// is found after scanning all ranges, it frees the physical memory ranges buffer
+// (if allocated) and returns 0.  Parameters:   a1 (unsigned __int64): Contains
+// components of a virtual address used for the page table walk.   a2 (char): A
+// flag that determines if the SizeOfImage field check is performed (check is
+// skipped if a2 is 0).  Return Value:   unsigned __int64: The physical address of
+// the found PE header if successful, otherwise 0.
+unsigned __int64 __fastcall FindPhysicalPESignature(
+        unsigned __int64 virtual_address_components,
+        char check_size_of_image_flag)
+{
+  PPHYSICAL_MEMORY_RANGE physical_ranges_1; // rax
+  PPHYSICAL_MEMORY_RANGE physical_ranges; // r14
+  int range_index; // r12d
+  PHYSICAL_ADDRESS *current_range; // rbx
+  PHYSICAL_ADDRESS range_size; // rax
+  unsigned __int64 current_physical_page; // rsi
+  unsigned __int64 page_index_in_range; // r13
+  unsigned __int64 v10; // rdx
+  unsigned __int64 v11; // rdx
+  unsigned __int64 v12; // rdx
+  unsigned __int64 v13; // rdx
+  unsigned __int64 dos_header_phys_addr; // rdi
+  unsigned __int64 pe_signature_phys_addr; // rdx
+  unsigned __int64 current_physical_page_2; // rax
+  _QWORD *dest_buffer_ptr; // rdi
+  unsigned __int64 current_physical_page_1; // rbx
+  __int64 qword_count; // r15
+  __int64 read_qword_1; // rax
+  __int64 pdpte; // [rsp+30h] [rbp-D0h] BYREF
+  __int64 pde; // [rsp+38h] [rbp-C8h] BYREF
+  __int64 pte; // [rsp+40h] [rbp-C0h] BYREF
+  __int64 read_qword; // [rsp+48h] [rbp-B8h] BYREF
+  __int16 dos_header_buffer[30]; // [rsp+50h] [rbp-B0h] BYREF
+  int e_lfanew_offset; // [rsp+8Ch] [rbp-74h]
+  _DWORD pe_headers_buffer[80]; // [rsp+90h] [rbp-70h] BYREF
+  __int64 bytes_transferred; // [rsp+1F0h] [rbp+F0h] BYREF
+  __int64 pml4e; // [rsp+1F8h] [rbp+F8h] BYREF
+
+  sub_1400024EC();
+  if ( qword_1400081A0 )
+  {
+    physical_ranges_1 = MmGetPhysicalMemoryRanges();
+    physical_ranges = physical_ranges_1;
+    if ( physical_ranges_1 )
+    {
+      range_index = 0;
+      current_range = &physical_ranges_1->BaseAddress;
+      if ( physical_ranges_1->BaseAddress.QuadPart )
+      {
+        do
+        {
+          range_size = current_range[1];
+          if ( !range_size.QuadPart )
+            break;
+          current_physical_page = current_range->QuadPart;
+          page_index_in_range = 0;
+          if ( range_size.QuadPart / 4096 )
+          {
+            while ( 1 )
+            {
+              if ( (*(_QWORD *)(qword_1400081A0 + 48 * (current_physical_page >> 12) + 40) & 0xFFFFFFFFFFLL) != 0
+                && (*(_QWORD *)(qword_1400081A0 + 48 * (current_physical_page >> 12) + 40) & 0xFFFFFFFFFFLL) == current_physical_page >> 12 )
+              {
+                bytes_transferred = 0;
+                pml4e = 0;
+                v10 = current_physical_page + 8 * ((virtual_address_components >> 39) & 0x1FF);
+                if ( v10 )
+                {
+                  if ( (int)MmCopyMemory(&pml4e, v10, 8, 1, &bytes_transferred) >= 0 && (pml4e & 1) != 0 )
+                  {
+                    pdpte = 0;
+                    v11 = (pml4e & 0xFFFFFFFFFF000LL) + 8 * ((virtual_address_components >> 30) & 0x1FF);
+                    if ( v11 )
+                    {
+                      _mm_lfence();
+                      if ( (int)MmCopyMemory(&pdpte, v11, 8, 1, &bytes_transferred) >= 0 && (pdpte & 1) != 0 )
+                      {
+                        pde = 0;
+                        v12 = (pdpte & 0xFFFFFFFFFF000LL) + 8 * ((virtual_address_components >> 21) & 0x1FF);
+                        if ( v12 )
+                        {
+                          _mm_lfence();
+                          if ( (int)MmCopyMemory(&pde, v12, 8, 1, &bytes_transferred) >= 0 && (pde & 1) != 0 )
+                          {
+                            pte = 0;
+                            v13 = (pde & 0xFFFFFFFFFF000LL) + 8 * ((virtual_address_components >> 12) & 0x1FF);
+                            if ( v13 )
+                            {
+                              _mm_lfence();
+                              if ( (int)MmCopyMemory(&pte, v13, 8, 1, &bytes_transferred) >= 0 && (pte & 1) != 0 )
+                              {
+                                dos_header_phys_addr = (virtual_address_components & 0xFFF) + (pte & 0xFFFFFFFFFF000LL);
+                                if ( dos_header_phys_addr )
+                                {
+                                  _mm_lfence();
+                                  MmCopyMemory(dos_header_buffer, dos_header_phys_addr, 64, 1, &bytes_transferred);
+                                }
+                                if ( dos_header_buffer[0] == 23117 )
+                                {
+                                  pe_signature_phys_addr = dos_header_phys_addr + e_lfanew_offset;
+                                  if ( pe_signature_phys_addr )
+                                  {
+                                    _mm_lfence();
+                                    MmCopyMemory(pe_headers_buffer, pe_signature_phys_addr, 264, 1, &bytes_transferred);
+                                  }
+                                  if ( pe_headers_buffer[0] == 17744
+                                    && (!check_size_of_image_flag || pe_headers_buffer[20] >= 0x61A8000u) )
+                                  {
+                                    break;
+                                  }
+                                }
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+              ++page_index_in_range;
+              current_physical_page += 4096LL;
+              if ( page_index_in_range >= current_range[1].QuadPart / 4096 )
+                goto LABEL_29;
+            }
+            dest_buffer_ptr = qword_1400061A8;
+            current_physical_page_1 = current_physical_page;
+            qword_count = 512;
+            do
+            {
+              read_qword_1 = 0;
+              read_qword = 0;
+              if ( current_physical_page_1 )
+              {
+                MmCopyMemory(&read_qword, current_physical_page_1, 8, 1, &bytes_transferred);
+                read_qword_1 = read_qword;
+              }
+              *(dest_buffer_ptr - 1) = current_physical_page_1;
+              current_physical_page_1 += 8LL;
+              *dest_buffer_ptr = read_qword_1;
+              dest_buffer_ptr += 2;
+              --qword_count;
+            }
+            while ( qword_count );
+            ExFreePoolWithTag(physical_ranges, 0);
+            current_physical_page_2 = current_physical_page;
+            QuadPart = current_physical_page;
+            return current_physical_page_2;
+          }
+LABEL_29:
+          current_range = &physical_ranges[++range_index].BaseAddress;
+        }
+        while ( current_range->QuadPart );
+      }
+      ExFreePoolWithTag(physical_ranges, 0);
+    }
+  }
+  return 0;
+}
+
+// This function serves as a dispatcher for process-related commands originating
+// from user mode. It first validates the caller's previous mode (must be UserMode)
+// and checks for specific magic values (105) in the initial parameters. It then
+// validates the command structure pointed to by `a9`, expecting a specific command
+// ID (26985) at offset 0. The function uses a subcommand code found at `a9 + 4` to
+// determine the specific operation to perform via a switch statement. Supported
+// operations include looking up processes by ID, copying memory between processes,
+// retrieving process PEB addresses, and interacting with an internal
+// object/resource. The result of the operation (NTSTATUS) is stored in the
+// unsigned integer pointed to by `a10`, and the function returns 0 upon successful
+// dispatch and execution (regardless of the operation's NTSTATUS). If initial
+// validation fails, the call is potentially forwarded to `p_p_sub_140002550`.
+__int64 __fastcall DispatchProcessCommands(
+        __int64 magic_val_1,
+        __int64 magic_val_2,
+        __int64 magic_val_3,
+        __int64 magic_val_4,
+        unsigned int magic_val_5,
+        __int64 magic_val_6,
+        __int64 magic_val_7,
+        __int64 magic_val_8,
+        __int64 command_params,
+        unsigned int *out_status)
+{
+  unsigned int status; // ebx
+  int n4; // eax
+  void *process_id; // rcx
+  void *ProcessId; // rcx
+  void *ProcessId_1; // rcx
+  void *ProcessId_2; // rcx
+  unsigned __int64 ProcessPeb; // rax
+  void *ProcessId_4; // rcx
+  unsigned __int64 v23; // rcx
+  void *ProcessId_3; // rcx
+  PEPROCESS CurrentProcess; // rax
+  __int64 destination_address; // r9
+  __int64 source_address; // rdx
+  int status_1; // edi
+  __int64 size; // [rsp+20h] [rbp-40h]
+  char *Process_; // [rsp+50h] [rbp-10h] BYREF
+  PEPROCESS process_object; // [rsp+58h] [rbp-8h] BYREF
+
+  if ( ExGetPreviousMode() == 1
+    && magic_val_1 == 105
+    && magic_val_2 == 105
+    && magic_val_3 == 105
+    && magic_val_4 == 105
+    && magic_val_5 == 105
+    && magic_val_6 == 105
+    && magic_val_7 == 105
+    && magic_val_8 == 105 )
+  {
+    status = 0;
+    if ( !command_params || *(_DWORD *)command_params != 26985 )
+      return ((__int64 (__fastcall *)(__int64, __int64, __int64, __int64, int, __int64, __int64, __int64, __int64, unsigned int *))p_p_sub_140002550)(
+               105,
+               105,
+               105,
+               105,
+               105,
+               105,
+               105,
+               105,
+               command_params,
+               out_status);
+    n4 = *(_DWORD *)(command_params + 4);
+    switch ( n4 )
+    {
+      case 0:
+        process_id = *(void **)(command_params + 8);
+        if ( process_id
+          && *(_QWORD *)(command_params + 16)
+          && *(_QWORD *)(command_params + 24)
+          && *(_QWORD *)(command_params + 48)
+          && PsLookupProcessByProcessId(process_id, &process_object) >= 0 )
+        {
+          driverWrite(
+            *(_QWORD *)(command_params + 16),
+            *(_QWORD *)(command_params + 24),
+            *(_QWORD *)(command_params + 48));
+        }
+        goto LABEL_66;
+      case 1:
+        ProcessId = *(void **)(command_params + 8);
+        if ( ProcessId
+          && *(_QWORD *)(command_params + 16)
+          && *(_QWORD *)(command_params + 24)
+          && *(_QWORD *)(command_params + 48)
+          && PsLookupProcessByProcessId(ProcessId, &process_object) >= 0 )
+        {
+          DriverRead(
+            *(_QWORD *)(command_params + 16),
+            *(_QWORD *)(command_params + 24),
+            *(_QWORD *)(command_params + 48));
+        }
+        goto LABEL_66;
+      case 3:
+        ProcessId_1 = *(void **)(command_params + 8);
+        if ( !ProcessId_1 || PsLookupProcessByProcessId(ProcessId_1, &process_object) < 0 )
+          goto LABEL_66;
+        ProcessId_2 = *(void **)(command_params + 8);
+        Process_ = 0;
+        if ( PsLookupProcessByProcessId(ProcessId_2, (PEPROCESS *)&Process_) >= 0 )
+          ProcessPeb = *(_QWORD *)&Process_[n960];
+        else
+          ProcessPeb = 0;
+        break;
+      case 5:
+        *(_QWORD *)(command_params + 24) = 0x2000;
+LABEL_66:
+        *out_status = status;
+        return 0;
+      case 8:
+        if ( PsLookupProcessByProcessId(*(HANDLE *)(command_params + 8), (PEPROCESS *)&Process_) < 0 )
+          goto LABEL_66;
+        ProcessPeb = PsGetProcessPeb(Process_);
+        break;
+      default:
+        if ( n4 != 4 || (ProcessId_4 = *(void **)(command_params + 8)) == 0 )
+        {
+          switch ( n4 )
+          {
+            case 6:
+              if ( qword_1400060A8 )
+                status = sub_140001388(
+                           qword_1400060A8,
+                           *(_DWORD *)(command_params + 32),
+                           *(_DWORD *)(command_params + 36),
+                           *(_WORD *)(command_params + 40)) == 0
+                       ? 0xC0000001
+                       : 0;
+              break;
+            case 7:
+              if ( !qword_1400060A8 )
+                AttemptReferenceObjectsAndLink(&qword_1400060A8);
+              break;
+            case 9:
+              status = sub_140003E10(
+                         *(_QWORD *)(command_params + 80),
+                         *(_DWORD *)(command_params + 72),
+                         magic_val_6,
+                         magic_val_5);
+              break;
+            case 10:
+              ProcessId_3 = *(void **)(command_params + 8);
+              if ( ProcessId_3
+                && *(_QWORD *)(command_params + 16)
+                && *(_QWORD *)(command_params + 24)
+                && *(_QWORD *)(command_params + 48) )
+              {
+                Process_ = 0;
+                if ( PsLookupProcessByProcessId(ProcessId_3, (PEPROCESS *)&Process_) < 0 )
+                {
+                  status = -1073741811;
+                }
+                else
+                {
+                  CurrentProcess = IoGetCurrentProcess();
+                  destination_address = *(_QWORD *)(command_params + 24);
+                  source_address = *(_QWORD *)(command_params + 16);
+                  size = *(_QWORD *)(command_params + 48);
+                  process_object = 0;
+                  status_1 = MmCopyVirtualMemory(
+                               Process_,
+                               source_address,
+                               CurrentProcess,
+                               destination_address,
+                               size,
+                               0,
+                               &process_object);
+                  if ( Process_ )
+                    ObfDereferenceObject_0(Process_);
+                  if ( status_1 >= 0 )
+                    status_1 = 0;
+                  status = status_1;
+                }
+              }
+              break;
+            default:
+              status = -1073741823;
+              break;
+          }
+          goto LABEL_66;
+        }
+        Process_ = 0;
+        if ( PsLookupProcessByProcessId(ProcessId_4, (PEPROCESS *)&Process_) >= 0 )
+          v23 = *(_QWORD *)&Process_[n960];
+        else
+          v23 = 0;
+        ProcessPeb = FindPhysicalPESignature(v23, *(_BYTE *)(command_params + 88));
+        break;
+    }
+    *(_QWORD *)(command_params + 24) = ProcessPeb;
+    goto LABEL_66;
+  }
+  return ((__int64 (__fastcall *)(__int64, __int64, __int64, __int64, unsigned int, __int64, __int64, __int64, __int64, unsigned int *))p_p_sub_140002550)(
+           magic_val_1,
+           magic_val_2,
+           magic_val_3,
+           magic_val_4,
+           magic_val_5,
+           magic_val_6,
+           magic_val_7,
+           magic_val_8,
+           command_params,
+           out_status);
+}
+
+// This function initializes global pointers to various Windows kernel API routines
+// by dynamically resolving their addresses using `MmGetSystemRoutineAddress`. It
+// attempts to resolve functions related to process handling, memory management,
+// system information, object handling, and process context switching. If any
+// required function fails to resolve, an obfuscated error message is decrypted and
+// printed via `DbgPrintEx`, and the function returns 0. If all functions are
+// successfully resolved, an obfuscated success message is decrypted and printed,
+// and the function returns 1. The debug messages are decrypted using a simple XOR-
+// based algorithm.  Return Value:   1: All required kernel API addresses were
+// successfully resolved.   0: Failed to resolve one or more required kernel API
+// addresses.
+char InitializeKernelApiPointers()
+{
+  int loop_counter_error_success; // ebx
+  int loop_counter_init_msg; // r8d
+  CHAR *p_debug_message_buffer; // r9
+  char v3; // cl
+  char v4; // al
+  CHAR *p_debug_message_buffer_1; // r8
+  char v6; // cl
+  char v7; // al
+  CHAR *p_debug_message_buffer_2; // r8
+  char v10; // cl
+  char v11; // al
+  CHAR *p_debug_message_buffer_3; // r8
+  char v13; // cl
+  char v14; // al
+  CHAR *p_debug_message_buffer_4; // r8
+  char v16; // cl
+  char v17; // al
+  CHAR *p_debug_message_buffer_5; // r8
+  char v19; // cl
+  char v20; // al
+  CHAR *p_debug_message_buffer_6; // r8
+  char v22; // cl
+  char v23; // al
+  CHAR *p_debug_message_buffer_7; // r8
+  char v25; // cl
+  char v26; // al
+  CHAR *p_debug_message_buffer_8; // r8
+  char v28; // cl
+  char v29; // al
+  CHAR *p_debug_message_buffer_9; // r8
+  char v31; // cl
+  char v32; // al
+  CHAR *p_debug_message_buffer_10; // r8
+  char v34; // cl
+  char v35; // al
+  CHAR *p_debug_message_buffer_11; // r8
+  char v37; // cl
+  char v38; // al
+  CHAR *p_debug_message_buffer_12; // r8
+  char v40; // cl
+  char v41; // al
+  CHAR *p_debug_message_buffer_13; // r8
+  char v43; // cl
+  char v44; // al
+  CHAR *p_debug_message_buffer_14; // r8
+  char v46; // cl
+  char v47; // al
+  CHAR *p_debug_message_buffer_15; // r8
+  char v49; // cl
+  char v50; // al
+  CHAR *p_debug_message_buffer_16; // r8
+  char v52; // cl
+  char v53; // al
+  CHAR *p_debug_message_buffer_17; // r8
+  char v55; // cl
+  char v56; // al
+  CHAR *p_debug_message_buffer_18; // r8
+  char v58; // cl
+  char v59; // al
+  CHAR *p_debug_message_buffer_19; // r8
+  char v61; // cl
+  char v62; // al
+  CHAR *p_debug_message_buffer_20; // r8
+  char v64; // cl
+  char v65; // al
+  CHAR *p_debug_message_buffer_21; // r8
+  char v67; // cl
+  char v68; // al
+  CHAR *p_debug_message_buffer_22; // r8
+  char v70; // cl
+  char v71; // al
+  CHAR *p_debug_message_buffer_23; // r8
+  char v73; // cl
+  char v74; // al
+  CHAR *p_debug_message_buffer_24; // r8
+  char v76; // cl
+  char v77; // al
+  CHAR *p_debug_message_buffer_25; // r8
+  unsigned int v79; // kr00_4
+  struct _UNICODE_STRING routine_name_unicode; // [rsp+20h] [rbp-50h] BYREF
+  CHAR debug_message_buffer[16]; // [rsp+30h] [rbp-40h] BYREF
+  __m256 v82; // [rsp+40h] [rbp-30h] BYREF
+  __int64 v83; // [rsp+60h] [rbp-10h]
+  __int16 n13630; // [rsp+68h] [rbp-8h]
+
+  loop_counter_error_success = 0;
+  loop_counter_init_msg = 0;
+  *(_OWORD *)debug_message_buffer = xmmword_1400050D0;
+  p_debug_message_buffer = debug_message_buffer;
+  qmemcpy(&v82, "$d1)g:,9$ ;+o9<\"<&!%yvwP[", 25);
+  do
+  {
+    v3 = 55 * (loop_counter_init_msg / 0x37u);
+    v4 = loop_counter_init_msg++;
+    *p_debug_message_buffer++ ^= v4 - v3 + 51;
+  }
+  while ( loop_counter_init_msg < 41 );
+  DbgPrintEx(0, 0, debug_message_buffer, p_debug_message_buffer);
+  *(_DWORD *)&routine_name_unicode.Length = 1835034;
+  routine_name_unicode.Buffer = L"RtlGetVersion";
+  RtlGetVersion_0 = (__int64)MmGetSystemRoutineAddress(&routine_name_unicode);
+  if ( !RtlGetVersion_0 )
+  {
+    p_debug_message_buffer_1 = debug_message_buffer;
+    LOWORD(v82.m256_f32[6]) = 23633;
+    *(_OWORD *)debug_message_buffer = xmmword_140005100;
+    *(_QWORD *)&v82.m256_f32[4] = 0x3436312424300227LL;
+    *(_OWORD *)v82.m256_f32 = xmmword_140005110;
+    do
+    {
+      v6 = 55 * (loop_counter_error_success / 0x37u);
+      v7 = loop_counter_error_success++;
+      *p_debug_message_buffer_1++ ^= v7 - v6 + 51;
+    }
+    while ( loop_counter_error_success < 42 );
+LABEL_6:
+    DbgPrintEx(0, 0, debug_message_buffer);
+    return 0;
+  }
+  *(_DWORD *)&routine_name_unicode.Length = 3145774;
+  routine_name_unicode.Buffer = L"MmGetVirtualForPhysical";
+  MmGetVirtualForPhysical = (__int64)MmGetSystemRoutineAddress(&routine_name_unicode);
+  if ( !MmGetVirtualForPhysical )
+  {
+    p_debug_message_buffer_2 = debug_message_buffer;
+    LODWORD(v83) = 1718552578;
+    *(_OWORD *)debug_message_buffer = xmmword_140005130;
+    v82 = ymmword_140005140;
+    do
+    {
+      v10 = 55 * (loop_counter_error_success / 0x37u);
+      v11 = loop_counter_error_success++;
+      *p_debug_message_buffer_2++ ^= v11 - v10 + 51;
+    }
+    while ( loop_counter_error_success < 52 );
+    goto LABEL_6;
+  }
+  *(_DWORD *)&routine_name_unicode.Length = 2097182;
+  routine_name_unicode.Buffer = L"ExAllocatePool2";
+  ExAllocatePool2 = (__int64)MmGetSystemRoutineAddress(&routine_name_unicode);
+  if ( !ExAllocatePool2 )
+  {
+    p_debug_message_buffer_3 = debug_message_buffer;
+    v82.m256_f32[6] = 3.8808514e18;
+    *(_OWORD *)debug_message_buffer = xmmword_140005168;
+    *(_QWORD *)&v82.m256_f32[4] = 0x353608322234373CLL;
+    *(_OWORD *)v82.m256_f32 = xmmword_140005178;
+    do
+    {
+      v13 = 55 * (loop_counter_error_success / 0x37u);
+      v14 = loop_counter_error_success++;
+      *p_debug_message_buffer_3++ ^= v14 - v13 + 51;
+    }
+    while ( loop_counter_error_success < 44 );
+    goto LABEL_6;
+  }
+  *(_DWORD *)&routine_name_unicode.Length = 2359330;
+  routine_name_unicode.Buffer = L"ExFreePoolWithTag";
+  ExFreePoolWithTag_0 = (__int64 (__fastcall *)(_QWORD, _QWORD))MmGetSystemRoutineAddress(&routine_name_unicode);
+  if ( !ExFreePoolWithTag_0 )
+  {
+    p_debug_message_buffer_4 = debug_message_buffer;
+    v82.m256_f32[6] = 0.00017932132;
+    *(_OWORD *)debug_message_buffer = xmmword_140005198;
+    LOWORD(v82.m256_f32[7]) = 24661;
+    *(_QWORD *)&v82.m256_f32[4] = 0x2E300F3B393A0436LL;
+    *(_OWORD *)v82.m256_f32 = xmmword_1400051A8;
+    do
+    {
+      v16 = 55 * (loop_counter_error_success / 0x37u);
+      v17 = loop_counter_error_success++;
+      *p_debug_message_buffer_4++ ^= v17 - v16 + 51;
+    }
+    while ( loop_counter_error_success < 46 );
+    goto LABEL_6;
+  }
+  *(_DWORD *)&routine_name_unicode.Length = 2359330;
+  routine_name_unicode.Buffer = L"ExGetPreviousMode";
+  ExGetPreviousMode_0 = (__int64)MmGetSystemRoutineAddress(&routine_name_unicode);
+  if ( !ExGetPreviousMode_0 )
+  {
+    p_debug_message_buffer_5 = debug_message_buffer;
+    v82.m256_f32[6] = 0.0028259209;
+    *(_OWORD *)debug_message_buffer = xmmword_1400051C8;
+    LOWORD(v82.m256_f32[7]) = 24661;
+    *(_QWORD *)&v82.m256_f32[4] = 0x292C373E20302603LL;
+    *(_OWORD *)v82.m256_f32 = xmmword_1400051D8;
+    do
+    {
+      v19 = 55 * (loop_counter_error_success / 0x37u);
+      v20 = loop_counter_error_success++;
+      *p_debug_message_buffer_5++ ^= v20 - v19 + 51;
+    }
+    while ( loop_counter_error_success < 46 );
+    goto LABEL_6;
+  }
+  *(_DWORD *)&routine_name_unicode.Length = 2752552;
+  routine_name_unicode.Buffer = L"ObfDereferenceObject";
+  ObfDereferenceObject_0 = (__int64)MmGetSystemRoutineAddress(&routine_name_unicode);
+  if ( !ObfDereferenceObject_0 )
+  {
+    p_debug_message_buffer_6 = debug_message_buffer;
+    LOBYTE(v83) = 99;
+    *(_OWORD *)debug_message_buffer = xmmword_1400051F8;
+    v82 = ymmword_140005208;
+    do
+    {
+      v22 = 55 * (loop_counter_error_success / 0x37u);
+      v23 = loop_counter_error_success++;
+      *p_debug_message_buffer_6++ ^= v23 - v22 + 51;
+    }
+    while ( loop_counter_error_success < 49 );
+    goto LABEL_6;
+  }
+  *(_DWORD *)&routine_name_unicode.Length = 3538996;
+  routine_name_unicode.Buffer = L"PsLookupProcessByProcessId";
+  PsLookupProcessByProcessId = (__int64)MmGetSystemRoutineAddress(&routine_name_unicode);
+  if ( !PsLookupProcessByProcessId )
+  {
+    p_debug_message_buffer_7 = debug_message_buffer;
+    LODWORD(v83) = 789976838;
+    *(_OWORD *)debug_message_buffer = xmmword_140005230;
+    WORD2(v83) = 25091;
+    v82 = ymmword_140005240;
+    BYTE6(v83) = 105;
+    do
+    {
+      v25 = 55 * (loop_counter_error_success / 0x37u);
+      v26 = loop_counter_error_success++;
+      *p_debug_message_buffer_7++ ^= v26 - v25 + 51;
+    }
+    while ( loop_counter_error_success < 55 );
+    goto LABEL_6;
+  }
+  *(_DWORD *)&routine_name_unicode.Length = 2097182;
+  routine_name_unicode.Buffer = L"PsGetProcessPeb";
+  PsGetProcessPeb = (__int64)MmGetSystemRoutineAddress(&routine_name_unicode);
+  if ( !PsGetProcessPeb )
+  {
+    p_debug_message_buffer_8 = debug_message_buffer;
+    v82.m256_f32[6] = 3.8774756e18;
+    *(_OWORD *)debug_message_buffer = xmmword_140005268;
+    *(_QWORD *)&v82.m256_f32[4] = 0xA2A2B32353A2603LL;
+    *(_OWORD *)v82.m256_f32 = xmmword_140005278;
+    do
+    {
+      v28 = 55 * (loop_counter_error_success / 0x37u);
+      v29 = loop_counter_error_success++;
+      *p_debug_message_buffer_8++ ^= v29 - v28 + 51;
+    }
+    while ( loop_counter_error_success < 44 );
+    goto LABEL_6;
+  }
+  *(_DWORD *)&routine_name_unicode.Length = 3276848;
+  routine_name_unicode.Buffer = L"ZwQuerySystemInformation";
+  ZwQuerySystemInformation = (__int64 (__fastcall *)(_QWORD, _QWORD, _QWORD, _QWORD))MmGetSystemRoutineAddress(&routine_name_unicode);
+  if ( !ZwQuerySystemInformation )
+  {
+    p_debug_message_buffer_9 = debug_message_buffer;
+    LODWORD(v83) = 1812663050;
+    *(_OWORD *)debug_message_buffer = xmmword_140005298;
+    BYTE4(v83) = 103;
+    v82 = ymmword_1400052A8;
+    do
+    {
+      v31 = 55 * (loop_counter_error_success / 0x37u);
+      v32 = loop_counter_error_success++;
+      *p_debug_message_buffer_9++ ^= v32 - v31 + 51;
+    }
+    while ( loop_counter_error_success < 53 );
+    goto LABEL_6;
+  }
+  *(_DWORD *)&routine_name_unicode.Length = 1703960;
+  routine_name_unicode.Buffer = L"MmCopyMemory";
+  MmCopyMemory = (__int64 (__fastcall *)(_QWORD, _QWORD, _QWORD, _QWORD, _QWORD))MmGetSystemRoutineAddress(&routine_name_unicode);
+  if ( !MmCopyMemory )
+  {
+    p_debug_message_buffer_10 = debug_message_buffer;
+    LOBYTE(v82.m256_f32[6]) = 91;
+    *(_OWORD *)debug_message_buffer = xmmword_1400052D0;
+    *(_QWORD *)&v82.m256_f32[4] = 0x50202A383B30192ALL;
+    *(_OWORD *)v82.m256_f32 = xmmword_1400052E0;
+    do
+    {
+      v34 = 55 * (loop_counter_error_success / 0x37u);
+      v35 = loop_counter_error_success++;
+      *p_debug_message_buffer_10++ ^= v35 - v34 + 51;
+    }
+    while ( loop_counter_error_success < 41 );
+    goto LABEL_6;
+  }
+  *(_DWORD *)&routine_name_unicode.Length = 1966108;
+  routine_name_unicode.Buffer = L"MmMapIoSpaceEx";
+  MmMapIoSpaceEx = (__int64 (__fastcall *)(_QWORD, _QWORD, _QWORD))MmGetSystemRoutineAddress(&routine_name_unicode);
+  if ( !MmMapIoSpaceEx )
+  {
+    p_debug_message_buffer_11 = debug_message_buffer;
+    qmemcpy(&v82.m256_f32[6], "#V]", 3);
+    *(_OWORD *)debug_message_buffer = xmmword_140005300;
+    *(_QWORD *)&v82.m256_f32[4] = 0x1F3C3B3626063B1ALL;
+    *(_OWORD *)v82.m256_f32 = xmmword_140005310;
+    do
+    {
+      v37 = 55 * (loop_counter_error_success / 0x37u);
+      v38 = loop_counter_error_success++;
+      *p_debug_message_buffer_11++ ^= v38 - v37 + 51;
+    }
+    while ( loop_counter_error_success < 43 );
+    goto LABEL_6;
+  }
+  *(_DWORD *)&routine_name_unicode.Length = 1966108;
+  routine_name_unicode.Buffer = L"MmUnmapIoSpace";
+  MmUnmapIoSpace = (__int64 (__fastcall *)(_QWORD, _QWORD))MmGetSystemRoutineAddress(&routine_name_unicode);
+  if ( !MmUnmapIoSpace )
+  {
+    p_debug_message_buffer_12 = debug_message_buffer;
+    qmemcpy(&v82.m256_f32[6], ">V]", 3);
+    *(_OWORD *)debug_message_buffer = xmmword_140005330;
+    *(_QWORD *)&v82.m256_f32[4] = 0x39382804391C2432LL;
+    *(_OWORD *)v82.m256_f32 = xmmword_140005340;
+    do
+    {
+      v40 = 55 * (loop_counter_error_success / 0x37u);
+      v41 = loop_counter_error_success++;
+      *p_debug_message_buffer_12++ ^= v41 - v40 + 51;
+    }
+    while ( loop_counter_error_success < 43 );
+    goto LABEL_6;
+  }
+  *(_DWORD *)&routine_name_unicode.Length = 2621478;
+  routine_name_unicode.Buffer = L"MmCopyVirtualMemory";
+  MmCopyVirtualMemory = (__int64)MmGetSystemRoutineAddress(&routine_name_unicode);
+  if ( !MmCopyVirtualMemory )
+  {
+    p_debug_message_buffer_13 = debug_message_buffer;
+    *(_OWORD *)debug_message_buffer = xmmword_140005360;
+    v82 = ymmword_140005370;
+    do
+    {
+      v43 = 55 * (loop_counter_error_success / 0x37u);
+      v44 = loop_counter_error_success++;
+      *p_debug_message_buffer_13++ ^= v44 - v43 + 51;
+    }
+    while ( loop_counter_error_success < 48 );
+    goto LABEL_6;
+  }
+  *(_DWORD *)&routine_name_unicode.Length = 3014700;
+  routine_name_unicode.Buffer = L"KeUnstackDetachProcess";
+  KeUnstackDetachProcess = (__int64 (__fastcall *)(_QWORD))MmGetSystemRoutineAddress(&routine_name_unicode);
+  if ( !KeUnstackDetachProcess )
+  {
+    p_debug_message_buffer_14 = debug_message_buffer;
+    LOWORD(v83) = 28176;
+    *(_OWORD *)debug_message_buffer = xmmword_140005390;
+    BYTE2(v83) = 101;
+    v82 = ymmword_1400053A0;
+    do
+    {
+      v46 = 55 * (loop_counter_error_success / 0x37u);
+      v47 = loop_counter_error_success++;
+      *p_debug_message_buffer_14++ ^= v47 - v46 + 51;
+    }
+    while ( loop_counter_error_success < 51 );
+    goto LABEL_6;
+  }
+  *(_DWORD *)&routine_name_unicode.Length = 2752552;
+  routine_name_unicode.Buffer = L"KeStackAttachProcess";
+  KeStackAttachProcess = (__int64 (__fastcall *)(_QWORD, _QWORD))MmGetSystemRoutineAddress(&routine_name_unicode);
+  if ( !KeStackAttachProcess )
+  {
+    p_debug_message_buffer_15 = debug_message_buffer;
+    LOBYTE(v83) = 99;
+    *(_OWORD *)debug_message_buffer = xmmword_1400053C8;
+    v82 = ymmword_1400053D8;
+    do
+    {
+      v49 = 55 * (loop_counter_error_success / 0x37u);
+      v50 = loop_counter_error_success++;
+      *p_debug_message_buffer_15++ ^= v50 - v49 + 51;
+    }
+    while ( loop_counter_error_success < 49 );
+    goto LABEL_6;
+  }
+  *(_DWORD *)&routine_name_unicode.Length = 2752552;
+  routine_name_unicode.Buffer = L"RtlInitUnicodeString";
+  RtlInitUnicodeString_0 = (__int64 (__fastcall *)(_QWORD, _QWORD, _QWORD, _QWORD))MmGetSystemRoutineAddress(&routine_name_unicode);
+  if ( !RtlInitUnicodeString_0 )
+  {
+    p_debug_message_buffer_16 = debug_message_buffer;
+    LOWORD(v83) = 25705;
+    *(_OWORD *)debug_message_buffer = xmmword_140005400;
+    v82 = ymmword_140005410;
+    do
+    {
+      v52 = 55 * (loop_counter_error_success / 0x37u);
+      v53 = loop_counter_error_success++;
+      *p_debug_message_buffer_16++ ^= v53 - v52 + 51;
+    }
+    while ( loop_counter_error_success < 50 );
+    goto LABEL_6;
+  }
+  *(_DWORD *)&routine_name_unicode.Length = 3145774;
+  routine_name_unicode.Buffer = L"RtlCompareUnicodeString";
+  RtlCompareUnicodeString_0 = (__int64 (__fastcall *)(_QWORD, _QWORD, _QWORD))MmGetSystemRoutineAddress(&routine_name_unicode);
+  if ( !RtlCompareUnicodeString_0 )
+  {
+    p_debug_message_buffer_17 = debug_message_buffer;
+    LODWORD(v83) = 1812072970;
+    *(_OWORD *)debug_message_buffer = xmmword_140005438;
+    BYTE4(v83) = 103;
+    v82 = ymmword_140005448;
+    do
+    {
+      v55 = 55 * (loop_counter_error_success / 0x37u);
+      v56 = loop_counter_error_success++;
+      *p_debug_message_buffer_17++ ^= v56 - v55 + 51;
+    }
+    while ( loop_counter_error_success < 53 );
+    goto LABEL_6;
+  }
+  *(_DWORD *)&routine_name_unicode.Length = 2621478;
+  routine_name_unicode.Buffer = L"MmProbeAndLockPages";
+  MmProbeAndLockPages = (__int64 (__fastcall *)(_QWORD, _QWORD, _QWORD))MmGetSystemRoutineAddress(&routine_name_unicode);
+  if ( !MmProbeAndLockPages )
+  {
+    p_debug_message_buffer_18 = debug_message_buffer;
+    LOBYTE(v83) = 99;
+    *(_OWORD *)debug_message_buffer = xmmword_140005470;
+    v82 = ymmword_140005480;
+    do
+    {
+      v58 = 55 * (loop_counter_error_success / 0x37u);
+      v59 = loop_counter_error_success++;
+      *p_debug_message_buffer_18++ ^= v59 - v58 + 51;
+    }
+    while ( loop_counter_error_success < 49 );
+    goto LABEL_6;
+  }
+  *(_DWORD *)&routine_name_unicode.Length = 1835034;
+  routine_name_unicode.Buffer = L"MmUnlockPages";
+  MmUnlockPages = (__int64 (__fastcall *)(_QWORD))MmGetSystemRoutineAddress(&routine_name_unicode);
+  if ( !MmUnlockPages )
+  {
+    p_debug_message_buffer_19 = debug_message_buffer;
+    *(_OWORD *)debug_message_buffer = xmmword_1400054A8;
+    qmemcpy(&v82.m256_f32[4], "?;6=\a9>?(V]", 11);
+    *(_OWORD *)v82.m256_f32 = xmmword_1400054B8;
+    do
+    {
+      v61 = 55 * (loop_counter_error_success / 0x37u);
+      v62 = loop_counter_error_success++;
+      *p_debug_message_buffer_19++ ^= v62 - v61 + 51;
+    }
+    while ( loop_counter_error_success < 43 );
+    goto LABEL_6;
+  }
+  *(_DWORD *)&routine_name_unicode.Length = 3801144;
+  routine_name_unicode.Buffer = L"MmMapLockedPagesSpecifyCache";
+  MmMapLockedPagesSpecifyCache = (__int64 (__fastcall *)(_QWORD, _QWORD, _QWORD, _QWORD, _DWORD, _DWORD))MmGetSystemRoutineAddress(&routine_name_unicode);
+  if ( !MmMapLockedPagesSpecifyCache )
+  {
+    p_debug_message_buffer_20 = debug_message_buffer;
+    n13630 = 13630;
+    *(_OWORD *)debug_message_buffer = xmmword_1400054D8;
+    v82 = ymmword_1400054E8;
+    v83 = 0x56010B06251C020ALL;
+    do
+    {
+      v64 = 55 * (loop_counter_error_success / 0x37u);
+      v65 = loop_counter_error_success++;
+      *p_debug_message_buffer_20++ ^= v65 - v64 + 51;
+    }
+    while ( loop_counter_error_success < 58 );
+    goto LABEL_6;
+  }
+  *(_DWORD *)&routine_name_unicode.Length = 2490404;
+  routine_name_unicode.Buffer = L"MmUnmapLockedPages";
+  MmUnmapLockedPages = (__int64 (__fastcall *)(_QWORD, _QWORD))MmGetSystemRoutineAddress(&routine_name_unicode);
+  if ( !MmUnmapLockedPages )
+  {
+    p_debug_message_buffer_21 = debug_message_buffer;
+    *(_OWORD *)debug_message_buffer = xmmword_140005518;
+    v82 = ymmword_140005528;
+    do
+    {
+      v67 = 55 * (loop_counter_error_success / 0x37u);
+      v68 = loop_counter_error_success++;
+      *p_debug_message_buffer_21++ ^= v68 - v67 + 51;
+    }
+    while ( loop_counter_error_success < 48 );
+    goto LABEL_6;
+  }
+  *(_DWORD *)&routine_name_unicode.Length = 3407922;
+  routine_name_unicode.Buffer = L"MmProtectMdlSystemAddress";
+  MmProtectMdlSystemAddress = (__int64 (__fastcall *)(_QWORD, _QWORD))MmGetSystemRoutineAddress(&routine_name_unicode);
+  if ( !MmProtectMdlSystemAddress )
+  {
+    p_debug_message_buffer_22 = debug_message_buffer;
+    LODWORD(v83) = 352327175;
+    *(_OWORD *)debug_message_buffer = xmmword_140005548;
+    WORD2(v83) = 25108;
+    v82 = ymmword_140005558;
+    BYTE6(v83) = 105;
+    do
+    {
+      v70 = 55 * (loop_counter_error_success / 0x37u);
+      v71 = loop_counter_error_success++;
+      *p_debug_message_buffer_22++ ^= v71 - v70 + 51;
+    }
+    while ( loop_counter_error_success < 55 );
+    goto LABEL_6;
+  }
+  *(_DWORD *)&routine_name_unicode.Length = 1835034;
+  routine_name_unicode.Buffer = L"IoAllocateMdl";
+  IoAllocateMdl = (__int64 (__fastcall *)(_QWORD, _QWORD, _QWORD, _QWORD, _QWORD))MmGetSystemRoutineAddress(&routine_name_unicode);
+  if ( !IoAllocateMdl )
+  {
+    p_debug_message_buffer_23 = debug_message_buffer;
+    qmemcpy(&v82.m256_f32[6], "7V]", 3);
+    *(_OWORD *)debug_message_buffer = xmmword_140005580;
+    *(_QWORD *)&v82.m256_f32[4] = 0x3E143D2337363B3FLL;
+    *(_OWORD *)v82.m256_f32 = xmmword_140005590;
+    do
+    {
+      v73 = 55 * (loop_counter_error_success / 0x37u);
+      v74 = loop_counter_error_success++;
+      *p_debug_message_buffer_23++ ^= v74 - v73 + 51;
+    }
+    while ( loop_counter_error_success < 43 );
+    goto LABEL_6;
+  }
+  *(_DWORD *)&routine_name_unicode.Length = 1310738;
+  routine_name_unicode.Buffer = L"IoFreeMdl";
+  IoFreeMdl = (__int64 (__fastcall *)(_QWORD))MmGetSystemRoutineAddress(&routine_name_unicode);
+  if ( !IoFreeMdl )
+  {
+    p_debug_message_buffer_24 = debug_message_buffer;
+    v82.m256_f32[4] = 0.0000000088587537;
+    qmemcpy(&v82.m256_f32[5], ";RY", 3);
+    *(_OWORD *)debug_message_buffer = xmmword_1400055B0;
+    *(_OWORD *)v82.m256_f32 = xmmword_1400055C0;
+    do
+    {
+      v76 = 55 * (loop_counter_error_success / 0x37u);
+      v77 = loop_counter_error_success++;
+      *p_debug_message_buffer_24++ ^= v77 - v76 + 51;
+    }
+    while ( loop_counter_error_success < 39 );
+    goto LABEL_6;
+  }
+  p_debug_message_buffer_25 = debug_message_buffer;
+  *(_OWORD *)debug_message_buffer = xmmword_1400055D8;
+  qmemcpy(&v82, ",615g:,9$ ;++p\"'070%$>,67%W^", 28);
+  do
+  {
+    v79 = loop_counter_error_success++;
+    *p_debug_message_buffer_25++ ^= v79 % 0x37 + 51;
+  }
+  while ( loop_counter_error_success < 44 );
+  DbgPrintEx(0, 0, debug_message_buffer);
+  return 1;
+}
+
+// Searches a memory range for a location that satisfies a specific condition. The
+// function iterates byte by byte from `start_address` for `range_size` bytes. In
+// each iteration, it calls `sub_140003860` with the current address as the first
+// argument.  Parameters:   start_address: The starting address of the memory range
+// to search.   range_size: The size of the memory range in bytes.   a3: Passed as
+// the second argument to sub_140003860.   p_x????xxxxxx: Passed as the third
+// argument to sub_140003860.  Returns:   The address within the range where
+// sub_140003860 returned 0.   0 if the condition is not met within the specified
+// range.
+__int64 __fastcall search_range_for_condition(
+        __int64 current_address_1,
+        unsigned __int64 range_size,
+        _BYTE *search_param3,
+        char *p_x????xxxxxx)
+{
+  __int64 current_address; // rbx
+
+  if ( !range_size )
+    return 0;
+  current_address = current_address_1;
+  while ( !check_char_condition(current_address, search_param3, p_x????xxxxxx) )
+  {
+    if ( ++current_address - current_address_1 >= range_size )
+      return 0;
+  }
+  return current_address;
+}
+
+// Finds a loaded kernel module by name, locates a specific section within that
+// module, and then searches within that section for a pattern or condition.
+// Parameters:   module_name: Pointer to a null-terminated string containing the
+// name of the module to find (e.g., "win32kfull.sys").   section_name: Pointer to
+// a null-terminated string containing the name of the section to find within the
+// module (e.g., ".text").   search_param3: Passed as the third argument to the
+// search function (sub_14000388C).   search_param4: Passed as the fourth argument
+// to the search function (sub_14000388C).  Returns:   The address found by the
+// search function (sub_14000388C) within the specified section, or 0 if any step
+// (module lookup, section lookup, or search) fails.
+__int64 __fastcall search_module_section_for_pattern(
+        const char *module_name,
+        char *section_name,
+        _BYTE *search_param3,
+        char *search_param4)
+{
+  __int64 v4; // rbx
+  __int64 *module_info; // rax
+  __int64 module_base; // r14
+  __int64 section_info; // rax
+
+  v4 = 0;
+  if ( !module_name )
+    return 0;
+  if ( !section_name )
+    return 0;
+  if ( !search_param3 )
+    return 0;
+  if ( !search_param4 )
+    return 0;
+  module_info = lookup_loaded_module_by_name(module_name);
+  if ( !module_info )
+    return 0;
+  module_base = module_info[6];
+  section_info = lookup_section_header_by_name(module_base, section_name);
+  if ( section_info )
+    return search_range_for_condition(
+             module_base + *(unsigned int *)(section_info + 12),
+             *(unsigned int *)(section_info + 8),
+             search_param3,
+             search_param4);
+  return v4;
+}
+
+// Searches the kernel's list of loaded modules (PsLoadedModuleList) for a module
+// with a matching name. The input ANSI string is converted to Unicode for
+// comparison. The comparison is case-insensitive.  Parameters:   SourceString:
+// Pointer to a null-terminated ANSI string containing the name of the module to
+// find.  Returns:   A pointer to the LDR_DATA_TABLE_ENTRY structure for the found
+// module.   0 if the module is not found or PsLoadedModuleList is not initialized.
+__int64 *__fastcall lookup_loaded_module_by_name(const char *module_name_ansi)
+{
+  __int64 v1; // rdi
+  __int64 *current_module_entry; // rbx
+  UNICODE_STRING String2; // [rsp+20h] [rbp-28h] BYREF
+  struct _UNICODE_STRING DestinationString; // [rsp+30h] [rbp-18h] BYREF
+
+  v1 = 0;
+  String2 = *AnsiToUnicodeStringAlloc(&DestinationString, module_name_ansi);
+  if ( !PsLoadedModuleList )
+    return 0;
+  for ( current_module_entry = (__int64 *)*PsLoadedModuleList;
+        current_module_entry != (__int64 *)PsLoadedModuleList;
+        current_module_entry = (__int64 *)*current_module_entry )
+  {
+    if ( !RtlCompareUnicodeString((PCUNICODE_STRING)(current_module_entry + 0xB), &String2, 1u) )
+      return current_module_entry;
+  }
+  return (__int64 *)v1;
+}
+
+// Parses the PE header of a loaded module to find the IMAGE_SECTION_HEADER
+// structure for a section with a matching name. The comparison of section names is
+// case-insensitive.  Parameters:   module_base: The base address of the loaded
+// module.   section_name: Pointer to a null-terminated string containing the name
+// of the section to find (e.g., ".text").  Returns:   A pointer to the
+// IMAGE_SECTION_HEADER structure for the found section.   0 if the module base or
+// section name is null, or if the section is not found.
+__int64 __fastcall lookup_section_header_by_name(__int64 module_base, char *section_name)
+{
+  __int64 v2; // r8
+  int section_index; // r10d
+  __int64 nt_headers; // rax
+  __int64 section_header; // rcx
+  char *section_name_1; // rbx
+  __int16 v7; // r9
+  __int16 v8; // bp
+  __int16 v9; // di
+
+  v2 = 0;
+  if ( !module_base || !section_name )
+    return 0;
+  section_index = 0;
+  nt_headers = module_base + *(int *)(module_base + 60);
+  section_header = nt_headers + 264;
+  if ( *(_WORD *)(nt_headers + 6) )
+  {
+    while ( 1 )
+    {
+      section_name_1 = section_name;
+      if ( section_header )
+        break;
+LABEL_11:
+      section_header += 40;
+      if ( ++section_index >= *(unsigned __int16 *)(nt_headers + 6) )
+        return v2;
+    }
+    while ( 1 )
+    {
+      v7 = section_name_1[section_header - (_QWORD)section_name];
+      v8 = *section_name_1++;
+      if ( (unsigned __int16)(v7 - 65) <= 0x19u )
+        v7 += 32;
+      v9 = v8 + 32;
+      if ( (unsigned __int16)(v8 - 65) > 0x19u )
+        v9 = v8;
+      if ( !v7 )
+        return section_header;
+      if ( v7 != v9 )
+        goto LABEL_11;
+    }
+  }
+  return v2;
+}
+bool __fastcall DriverRead(__int64 a1, __int64 a2, unsigned __int64 a3)
+{
+  unsigned __int64 v3; // rbx
+  __int64 v6; // r14
+  __int64 v7; // rdi
+  __int64 v8; // rax
+  __int64 v9; // r8
+  __int64 v10; // rcx
+  __int64 v11; // rdx
+  int v12; // eax
+  __int64 v14; // [rsp+50h] [rbp+8h] BYREF
+
+  v3 = a3;
+  if ( a1 && a2 && a3 )
+  {
+    v6 = QuadPart;
+    v7 = 0;
+    while ( 1 )
+    {
+      v8 = TranslateVirtualToPhysical(v6, v7 + a1);
+      if ( !v8 )
+        break;
+      v9 = v3;
+      v10 = v7 + a2;
+      if ( 4096 - (unsigned __int64)(v8 & 0xFFF) < v3 )
+        v9 = 4096 - (v8 & 0xFFF);
+      v11 = 0;
+      v14 = 0;
+      if ( v10 && v9 )
+      {
+        v12 = MmCopyMemory(v10, v8, v9, 1, &v14);
+        v11 = v14;
+      }
+      else
+      {
+        v12 = -1073741811;
+      }
+      v3 -= v11;
+      v7 += v11;
+      if ( v12 < 0 || !v11 || !v3 )
+        return v12 >= 0;
+    }
+  }
+  return 0;
+}
+
+__int64 __fastcall WritePhysical(__int64 a1, __m128 *p_p_sub_140002550_1, unsigned __int64 n8, unsigned __int64 *a4)
+{
+  __m128 *p_p_sub_140002550; // rax
+  __m128 *p_p_sub_140002550_2; // rsi
+
+  if ( !a1 || !p_p_sub_140002550_1 || !n8 )
+    return 3221225485LL;
+  if ( a4 )
+    *a4 = 0;
+  p_p_sub_140002550 = (__m128 *)MmMapIoSpaceEx(a1, n8, 4);
+  p_p_sub_140002550_2 = p_p_sub_140002550;
+  if ( !p_p_sub_140002550 )
+    return 3221225473LL;
+  sub_140004380(p_p_sub_140002550, p_p_sub_140002550_1, n8);
+  if ( a4 )
+    *a4 = n8;
+  MmUnmapIoSpace(p_p_sub_140002550_2, n8);
+  return 0;
+}
+
+// local variable allocation has failed, the output may be wrong!
+int __cdecl driverWrite(int Filehandle, const void *Buf, unsigned int MaxCharCount)
+{
+  unsigned __int64 v3; // rax
+  unsigned __int64 n8_1; // rbx
+  __int64 v6; // rsi
+  __int64 QuadPart; // r14
+  __int64 v8; // rdi
+  unsigned __int64 n8; // r8
+  int v10; // eax
+  unsigned __int64 v12; // [rsp+40h] [rbp+8h] BYREF
+
+  n8_1 = *(_QWORD *)&MaxCharCount;
+  v6 = *(_QWORD *)&Filehandle;
+  if ( *(_QWORD *)&Filehandle && Buf && *(_QWORD *)&MaxCharCount )
+  {
+    QuadPart = ::QuadPart;
+    v8 = 0;
+    while ( 1 )
+    {
+      v3 = TranslateVirtualToPhysical(QuadPart, v8 + v6);
+      if ( !v3 )
+        break;
+      v12 = 0;
+      n8 = n8_1;
+      if ( 4096 - (v3 & 0xFFF) < n8_1 )
+        n8 = 4096 - (v3 & 0xFFF);
+      v10 = WritePhysical(v3, (__m128 *)((char *)Buf + v8), n8, &v12);
+      n8_1 -= v12;
+      v8 += v12;
+      if ( v10 < 0 || !v12 || !n8_1 )
+      {
+        LODWORD(v3) = (unsigned int)v10 >> 31;
+        LOBYTE(v3) = v3 ^ 1;
+        return v3;
+      }
+    }
+  }
+  LOBYTE(v3) = 0;
+  return v3;
+}
+
